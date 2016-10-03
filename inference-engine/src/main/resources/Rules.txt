@@ -1,0 +1,2 @@
+A AND B => C
+A OR B => D
