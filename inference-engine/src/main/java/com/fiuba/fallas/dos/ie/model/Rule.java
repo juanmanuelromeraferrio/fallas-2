@@ -10,6 +10,8 @@ public class Rule {
 	private static final String OR = "OR";
 
 	private Integer number;
+	private String rule;
+	private String condition;
 	private List<String> parameters;
 	private List<BiFunction<Boolean, Boolean, Boolean>> conditions;
 
@@ -24,11 +26,16 @@ public class Rule {
 		return this.number;
 	}
 
+	public String getAsString() { return this.rule; }
+
+	public String getCondition() { return this.condition; }
+
 	public String getResultado() {
 		return parameters.get(parameters.size() - 1);
 	}
 
 	public void build(String line) {
+		rule = line;
 		String[] array = line.split(" ");
 		for (int i = 0; i < array.length; i++) {
 			String word = array[i];
@@ -36,23 +43,23 @@ public class Rule {
 				parameters.add(word);
 			} else {
 				if (word.equals(AND)) {
+					this.condition = "AND";
 					conditions.add(new BiFunction<Boolean, Boolean, Boolean>() {
 
 						public Boolean apply(Boolean x, Boolean y) {
 							Boolean result = x && y;
-							System.out.println("x=" + x + " AND y=" + y
-									+ " => " + result);
+							//System.out.println("x=" + x + " AND y=" + y + " => " + result);
 							return result;
 						}
 					});
 
 				} else if (word.equals(OR)) {
+					this.condition = "OR";
 					conditions.add(new BiFunction<Boolean, Boolean, Boolean>() {
 
 						public Boolean apply(Boolean x, Boolean y) {
 							Boolean result = x || y;
-							System.out.println("x=" + x + " OR y=" + y + " => "
-									+ result);
+							//System.out.println("x=" + x + " OR y=" + y + " => " + result);
 							return result;
 						}
 					});
@@ -83,5 +90,20 @@ public class Rule {
 
 		System.out.println("Regla " + number + " dio como resultado " + result);
 		return result;
+	}
+
+	public Boolean containsConclusion(String conclusion) {
+		String lastElement = parameters.get(parameters.size() - 1);
+		return (lastElement.equals(conclusion));
+	}
+
+	public List<String> getAllHypothesis() {
+		List<String> hypothesis = new ArrayList<String>();
+		for (String param : parameters) {
+			if (parameters.indexOf(param) < (parameters.size() - 1)) {
+				hypothesis.add(param);
+			}
+		}
+		return hypothesis;
 	}
 }
