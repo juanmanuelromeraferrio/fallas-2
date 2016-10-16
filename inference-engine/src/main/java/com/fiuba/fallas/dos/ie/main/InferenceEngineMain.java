@@ -20,6 +20,7 @@ public class InferenceEngineMain {
     public static void main(String[] args) {
         loadRules();
         loadParameters();
+        System.out.println("\nBase de conocimientos inicial cargada.\n");
         showKnoledgeBase();
         String chainingOption = chooseChainingOption();
         if (chainingOption.equals("forward")) {
@@ -33,7 +34,6 @@ public class InferenceEngineMain {
     }
 
     private static void showKnoledgeBase() {
-        System.out.println("Base de conocimientos inicial cargada.\n");
         System.out.println("Reglas:");
         String fileName = "./src/main/resources/Rules.txt";
         try (Stream<String> stream = Files.lines(Paths.get(fileName))) {
@@ -74,6 +74,7 @@ public class InferenceEngineMain {
     }
 
     private static void runForward() {
+        List<String> results = new ArrayList<>();
         for (Rule rule : rules) {
             Boolean ruleContainsAllParameters = true;
             for (String hypothesis : rule.getAllHypothesis()) {
@@ -90,9 +91,14 @@ public class InferenceEngineMain {
                 Boolean result = rule.action(parameters);
                 if (result) {
                     System.out.println("Se cumple la Regla " + rule.getNumber() + " resultado = " + rule.getResultado());
+                    results.add(rule.getResultado());
                 }
             }
         }
+        System.out.println("\n\n\nBase de conocimientos final\n");
+        showKnoledgeBase();
+        System.out.println("\nHechos derivados:");
+        results.stream().forEach(System.out::println);
     }
 
     private static void loadRules() {
@@ -135,8 +141,10 @@ public class InferenceEngineMain {
     private static void runBackward(String conclusionToVerify) {
         knowledgeBase = parameters;
         Parameters p = verifyConclusion(conclusionToVerify);
-        if (p.getValue(conclusionToVerify) == Boolean.FALSE) {
-            System.out.println("No se pudo verificar " + conclusionToVerify);
+        if (p.getValue(conclusionToVerify)) {
+            System.out.println("\n\nEl objetivo '" + conclusionToVerify + "' ha sido verificado");
+        } else {
+            System.out.println("\n\nNo se pudo verificar el objetivo '" + conclusionToVerify + "'");
         }
     }
 
