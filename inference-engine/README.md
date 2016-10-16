@@ -20,4 +20,12 @@ $ mvn eclipse:eclipse
 6. Select Run > Run Configurations > Select InferenceEngineMain as Main class
 7. Run
 
+## Running in console
+
+En root del proyecto: 
+
+```sh
+$ mvn assembly:assembly
+$ java -jar target/InferenceEngineExecutable.jar
+```
 

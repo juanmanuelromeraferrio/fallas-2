@@ -5,154 +5,205 @@ import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.stream.BaseStream;
 import java.util.stream.Stream;
 
 import com.fiuba.fallas.dos.ie.model.Parameters;
 import com.fiuba.fallas.dos.ie.model.Rule;
+import java.util.Scanner;
 
 public class InferenceEngineMain {
 
-	static List<Rule> rules = new ArrayList<Rule>();
-	static Parameters parameters;
-	static Parameters knowledgeBase;
+    static List<Rule> rules = new ArrayList<Rule>();
+    static Parameters parameters;
+    static Parameters knowledgeBase;
 
-	public static void main(String[] args) {
-		loadRules();
-		System.out.println("Conocimiento inicial:\n");
-		loadParameters();
-		System.out.println("\nEncadenamiento hacia adelante:\n");
-		evaluateRules();
-		System.out.println("\nEncadenamiento hacia atrás:\n");
-		runBackward("U"); //no verifica
-		System.out.println();
-		runBackward("V"); //verifica
-		System.out.println("");
-		runBackward("E"); //verifica con OR
-	}
+    public static void main(String[] args) {
+        loadRules();
+        loadParameters();
+        showKnoledgeBase();
+        String chainingOption = chooseChainingOption();
+        if (chainingOption.equals("forward")) {
+            System.out.println("\nEncadenamiento hacia adelante:\n");
+            runForward();
+        } else {
+            String target = chooseTargetBackward();
+            System.out.println("\nEncadenamiento hacia atrás:\n");
+            runBackward(target);
+        }
+    }
 
-	private static void evaluateRules() {
-		for (Rule rule : rules) {
-			Boolean ruleContainsAllParameters = true;
-			for(String hypothesis : rule.getAllHypothesis()) {
-				if (parameters.getValue(hypothesis) == null) {
-					ruleContainsAllParameters = false;
-					break;
-				}
-			}
-			if (ruleContainsAllParameters) {
-				System.out.println(
-						"Se evalúa la regla " + rule.getNumber()
-						+ " (" + rule.getAsString() + ")"
-						+ " ya que se cuentan con las premisas necesarias");
-				Boolean result = rule.action(parameters);
-				if (result) {
-					System.out.println("Se cumple la Regla " + rule.getNumber() + " resultado = " + rule.getResultado());
-				}
-			}
-		}
-	}
+    private static void showKnoledgeBase() {
+        System.out.println("Base de conocimientos inicial cargada.\n");
+        System.out.println("Reglas:");
+        String fileName = "./src/main/resources/Rules.txt";
+        try (Stream<String> stream = Files.lines(Paths.get(fileName))) {
+            stream.forEach(System.out::println);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        System.out.println("\nHechos:");
+        fileName = "./src/main/resources/Parameters.txt";
+        try (Stream<String> stream = Files.lines(Paths.get(fileName))) {
+            stream.forEach(System.out::println);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
 
-	private static void loadParameters() {
-		parameters = new Parameters();
+    private static String chooseChainingOption() {
+        Scanner input = new Scanner(System.in);
+        String result = "";
+        do {
+            System.out.println("\nIngrese el tipo de evaluación de las reglas.\n"
+                    + "1. Encadenamiento hacia adelante \n"
+                    + "2. Encadenamiento hacia atrás \n");
 
-		parameters.add("Q", Boolean.TRUE);
-		System.out.println("Q = True");
+            result = input.next();
+        } while (!(result.equals("1") || result.equals("2")));
+        return (result.equals("1")) ? "forward" : "backward";
+    }
 
-		parameters.add("P", Boolean.TRUE);
-		System.out.println("P = True");
+    private static String chooseTargetBackward() {
+        Scanner input = new Scanner(System.in);
+        String result = "";
+        do {
+            System.out.println("\nIngrese el objetivo a verificar: \n");
+            result = input.nextLine();
+        } while (result.isEmpty());
+        return result.toUpperCase();
+    }
 
-		parameters.add("R", Boolean.TRUE);
-		System.out.println("R = True");
-	}
+    private static void runForward() {
+        for (Rule rule : rules) {
+            Boolean ruleContainsAllParameters = true;
+            for (String hypothesis : rule.getAllHypothesis()) {
+                if (parameters.getValue(hypothesis) == null) {
+                    ruleContainsAllParameters = false;
+                    break;
+                }
+            }
+            if (ruleContainsAllParameters) {
+                System.out.println(
+                        "Se evalúa la regla " + rule.getNumber()
+                        + " (" + rule.getAsString() + ")"
+                        + " ya que se cuentan con las premisas necesarias");
+                Boolean result = rule.action(parameters);
+                if (result) {
+                    System.out.println("Se cumple la Regla " + rule.getNumber() + " resultado = " + rule.getResultado());
+                }
+            }
+        }
+    }
 
-	private static void loadRules() {
-		String fileName = "./src/main/resources/Rules.txt";
+    private static void loadRules() {
+        String fileName = "./src/main/resources/Rules.txt";
 
-		try (Stream<String> stream = Files.lines(Paths.get(fileName))) {
-			stream.forEach(InferenceEngineMain::buildRule);
-		} catch (IOException e) {
-			e.printStackTrace();
-		}
-	}
+        try (Stream<String> stream = Files.lines(Paths.get(fileName))) {
+            stream.forEach(InferenceEngineMain::buildRule);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
 
-	public static void buildRule(String line) {
-		Rule rule = new Rule(rules.size());
-		rule.build(line);
-		rules.add(rule);
-	}
+    private static void loadParameters() {
+        parameters = new Parameters();
 
-	private static void runBackward(String conclusionToVerify) {
-		knowledgeBase = parameters;
-		Parameters p = verifyConclusion(conclusionToVerify);
-		if (p.getValue(conclusionToVerify) == Boolean.FALSE) {
-			System.out.println("No se pudo verificar " + conclusionToVerify);
-		}
-	}
+        String fileName = "./src/main/resources/Parameters.txt";
+        try (Stream<String> stream = Files.lines(Paths.get(fileName))) {
+            stream.forEach(InferenceEngineMain::buildParameter);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
 
-	private static Parameters verifyConclusion(String conclusionToVerify) {
-		System.out.println("Se intenta verificar " + conclusionToVerify);
-		knowledgeBase.add(conclusionToVerify, Boolean.TRUE);
-		for (Rule rule : getMatchingRules(conclusionToVerify)) {
-			System.out.println("Se intenta verificar con la regla " + rule.getNumber() + " (" + rule.getAsString() + ")");
-			List<String> missingHypothesis = getMissingHypothesis(rule);
-			if (!missingHypothesis.isEmpty()) {
-				for (String missingHyp : missingHypothesis) {
-					System.out.println(missingHyp + " no está contenida en la base de conocimientos");
-				 	if (!verifyConclusion(missingHyp).getValue(missingHyp)) {
-						Parameters p = new Parameters();
-						p.add(conclusionToVerify, Boolean.FALSE);
-						System.out.println("No se pudo verificar " + missingHyp);
-						if (rule.getCondition() == "OR") {
-							break;
-						} else {
-							return p;
-						}
-					}
-				}
-			}
-			Parameters p = new Parameters();
-			System.out.println(
-					"Se evalúa la regla " + rule.getNumber()
-					+ " (" + rule.getAsString() + ")"
-					+ " ya que se cuentan con las premisas necesarias");
-			p.add(conclusionToVerify, rule.action(getParametersOfRule(rule)));
-			System.out.println("Se verificó " + conclusionToVerify);
-			return p;
-		}
-		Parameters p = new Parameters();
-		p.add(conclusionToVerify, Boolean.FALSE);
-		System.out.println("No hay ninguna regla para verificar " + conclusionToVerify);
-		return p;
-	}
+    public static void buildRule(String line) {
+        Rule rule = new Rule(rules.size());
+        rule.build(line);
+        rules.add(rule);
+    }
 
-	private static List<Rule> getMatchingRules(String conclusion) {
-		List<Rule> matchingRules = new ArrayList<>();
-		for (Rule rule : rules) {
-			if (rule.containsConclusion(conclusion)) {
-				matchingRules.add(rule);
-			}
-		}
-		return matchingRules;
-	}
+    public static void buildParameter(String line) {
+        String[] array = line.split(" ");
+        String parameterName = array[0];
+        Boolean parameterValue = Boolean.TRUE;
+        if (array.length >= 2) {
+            parameterValue = Boolean.valueOf(array[1]);
+        }
+        parameters.add(parameterName, parameterValue);
+    }
 
-	private static List<String> getMissingHypothesis(Rule rule) {
-		List<String> missingHypothesis = new ArrayList<>();
-		for (String hypothesis : rule.getAllHypothesis()) {
-			if (knowledgeBase.getValue(hypothesis) == null) {
-				missingHypothesis.add(hypothesis);
-			}
-		}
-		return missingHypothesis;
-	}
+    private static void runBackward(String conclusionToVerify) {
+        knowledgeBase = parameters;
+        Parameters p = verifyConclusion(conclusionToVerify);
+        if (p.getValue(conclusionToVerify) == Boolean.FALSE) {
+            System.out.println("No se pudo verificar " + conclusionToVerify);
+        }
+    }
 
-	private static Parameters getParametersOfRule(Rule rule) {
-		Parameters parametersOfRule = new Parameters();
-		for (String hypothesis : rule.getAllHypothesis()) {
-			if (knowledgeBase.getValue(hypothesis) != null) {
-				parametersOfRule.add(hypothesis, knowledgeBase.getValue(hypothesis));
-			}
-		}
-		return parametersOfRule;
-	}
+    private static Parameters verifyConclusion(String conclusionToVerify) {
+        System.out.println("Se intenta verificar " + conclusionToVerify);
+        knowledgeBase.add(conclusionToVerify, Boolean.TRUE);
+        for (Rule rule : getMatchingRules(conclusionToVerify)) {
+            System.out.println("Se intenta verificar con la regla " + rule.getNumber() + " (" + rule.getAsString() + ")");
+            List<String> missingHypothesis = getMissingHypothesis(rule);
+            if (!missingHypothesis.isEmpty()) {
+                for (String missingHyp : missingHypothesis) {
+                    System.out.println(missingHyp + " no está contenida en la base de conocimientos");
+                    if (!verifyConclusion(missingHyp).getValue(missingHyp)) {
+                        Parameters p = new Parameters();
+                        p.add(conclusionToVerify, Boolean.FALSE);
+                        System.out.println("No se pudo verificar " + missingHyp);
+                        if (rule.getCondition() == "OR") {
+                            break;
+                        } else {
+                            return p;
+                        }
+                    }
+                }
+            }
+            Parameters p = new Parameters();
+            System.out.println(
+                    "Se evalúa la regla " + rule.getNumber()
+                    + " (" + rule.getAsString() + ")"
+                    + " ya que se cuentan con las premisas necesarias");
+            p.add(conclusionToVerify, rule.action(getParametersOfRule(rule)));
+            System.out.println("Se verificó " + conclusionToVerify);
+            return p;
+        }
+        Parameters p = new Parameters();
+        p.add(conclusionToVerify, Boolean.FALSE);
+        System.out.println("No hay ninguna regla para verificar " + conclusionToVerify);
+        return p;
+    }
+
+    private static List<Rule> getMatchingRules(String conclusion) {
+        List<Rule> matchingRules = new ArrayList<>();
+        for (Rule rule : rules) {
+            if (rule.containsConclusion(conclusion)) {
+                matchingRules.add(rule);
+            }
+        }
+        return matchingRules;
+    }
+
+    private static List<String> getMissingHypothesis(Rule rule) {
+        List<String> missingHypothesis = new ArrayList<>();
+        for (String hypothesis : rule.getAllHypothesis()) {
+            if (knowledgeBase.getValue(hypothesis) == null) {
+                missingHypothesis.add(hypothesis);
+            }
+        }
+        return missingHypothesis;
+    }
+
+    private static Parameters getParametersOfRule(Rule rule) {
+        Parameters parametersOfRule = new Parameters();
+        for (String hypothesis : rule.getAllHypothesis()) {
+            if (knowledgeBase.getValue(hypothesis) != null) {
+                parametersOfRule.add(hypothesis, knowledgeBase.getValue(hypothesis));
+            }
+        }
+        return parametersOfRule;
+    }
+
 }

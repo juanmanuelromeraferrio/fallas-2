@@ -1,2 +1,6 @@
-A AND B => C
-A OR B => D
+P AND Q => S
+R AND N => T
+S AND T => U
+S AND R => V
+R OR L => E
+P OR R => W
