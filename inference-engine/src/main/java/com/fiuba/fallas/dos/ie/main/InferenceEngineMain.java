@@ -9,6 +9,7 @@ import java.util.stream.Stream;
 
 import com.fiuba.fallas.dos.ie.model.Parameters;
 import com.fiuba.fallas.dos.ie.model.Rule;
+import java.util.Map;
 import java.util.Scanner;
 
 public class InferenceEngineMain {
@@ -74,31 +75,70 @@ public class InferenceEngineMain {
     }
 
     private static void runForward() {
+
+        knowledgeBase = parameters;
         List<String> results = new ArrayList<>();
-        for (Rule rule : rules) {
-            Boolean ruleContainsAllParameters = true;
-            for (String hypothesis : rule.getAllHypothesis()) {
-                if (parameters.getValue(hypothesis) == null) {
-                    ruleContainsAllParameters = false;
-                    break;
+        while (existsDerivableRule()) {
+            for (Rule rule : rules) {
+                Boolean ruleContainsAllParameters = true;
+                for (String hypothesis : rule.getAllHypothesis()) {
+                    if (parameters.getValue(hypothesis) == null) {
+                        ruleContainsAllParameters = false;
+                        break;
+                    }
                 }
-            }
-            if (ruleContainsAllParameters) {
-                System.out.println(
-                        "Se evalúa la regla " + rule.getNumber()
-                        + " (" + rule.getAsString() + ")"
-                        + " ya que se cuentan con las premisas necesarias");
-                Boolean result = rule.action(parameters);
-                if (result) {
-                    System.out.println("Se cumple la Regla " + rule.getNumber() + " resultado = " + rule.getResultado());
-                    results.add(rule.getResultado());
+                if (ruleContainsAllParameters) {
+                    System.out.println(
+                            "Se evalúa la regla " + rule.getNumber()
+                            + " (" + rule.getAsString() + ")"
+                            + " ya que se cuentan con las premisas necesarias");
+                    Boolean result = rule.action(parameters);
+                    if (result) {
+                        System.out.println("Se cumple la Regla " + rule.getNumber() + " resultado = " + rule.getResultado());
+                        results.add(rule.getResultado());
+                        knowledgeBase.add(rule.getResultado(), true);
+                        rule.setComplete(Boolean.TRUE);
+                    }
                 }
             }
         }
+
         System.out.println("\n\n\nBase de conocimientos final\n");
         showKnoledgeBase();
         System.out.println("\nHechos derivados:");
         results.stream().forEach(System.out::println);
+    }
+
+    private static Boolean existsDerivableRule() {
+        Boolean existDerivableRule = Boolean.FALSE;
+        Integer ruleNumber = 0;
+
+        for (Rule rule : rules) {
+            if (rule.getComplete()) {
+                break;
+            }
+            existDerivableRule = Boolean.TRUE;
+            for (String parameterRule : rule.getAllHypothesis()) {
+                if (knowledgeBase.getValue(parameterRule) == null) {
+                    existDerivableRule = Boolean.FALSE;
+                    break;
+                }
+            }
+
+            ruleNumber = rule.getNumber();
+            if (existDerivableRule) {
+                break;
+            }
+
+        }
+        if (existDerivableRule) {
+            System.out.println("Existe regla derivable");
+            System.out.println("Regla numero: " + ruleNumber);
+        } else {
+            System.out.println("No existe regla derivable");
+        }
+
+        return existDerivableRule;
     }
 
     private static void loadRules() {
